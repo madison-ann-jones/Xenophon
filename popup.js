@@ -37,16 +37,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     decisionEl.className = `advice ${analysisResult.decision.toLowerCase()}`;
                     decisionEl.innerText = analysisResult.decision;
                     
-                    metricsEl.innerHTML = `
-                        RSI (14): ${analysisResult.metrics.rsi}<br>
-                        Trend (SMA 50/200): ${analysisResult.metrics.trend}<br>
-                        Confidence: ${analysisResult.confidence}%
-                    `;
-                });
-            });
-        });
-    }
-
+                  metricsEl.innerHTML = `
+    <strong>RSI (14):</strong> ${analysisResult.metrics.rsi}<br>
+    <strong>Trend:</strong> ${analysisResult.metrics.trend}<br>
+    <strong>MACD:</strong> ${analysisResult.metrics.macdStatus}<br>
+    <strong>Bands:</strong> ${analysisResult.metrics.bbStatus}<br>
+    <strong>Volatility:</strong> ${analysisResult.metrics.volatility}<br>
+    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #333;">
+        <strong>Confidence Score:</strong> ${analysisResult.confidence}%
+    </div>
+`;
     analyzeBtn.addEventListener('click', requestAnalysis);
     
     // Auto-run on open
