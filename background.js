@@ -14,39 +14,45 @@ async function analyzeAsset(ticker, type) {
 
         if (!closes || closes.length < 50) throw new Error("Not enough historical data.");
 
+        const currentPrice = closes[closes.length - 1];
+
         // 1. Calculate Technical Indicators
         const rsi = calculateRSI(closes, 14);
         const sma20 = calculateSMA(closes, 20);
         const sma50 = calculateSMA(closes, 50);
         const macd = calculateMACD(closes);
+        const bb = calculateBollingerBands(closes, 20, 2);
         
         const isUptrend = sma20 > sma50; 
         
         let decision = "HOLD";
         let confidence = 50;
 
-        // 2. Advanced Algorithmic Logic
-        if (rsi < 45 && macd.isBullishCross) {
+        // 2. Bollinger Band Breakout Logic
+        const isBreakingUpper = currentPrice > bb.upper;
+        const isBreakingLower = currentPrice < bb.lower;
+
+        // 3. Multi-Factor Algorithmic Logic
+        if (isBreakingUpper && rsi > 70) {
+            decision = "SELL"; 
+            confidence = 95; // Extreme overbought: Above upper band AND high RSI
+        } else if (isBreakingLower && rsi < 30) {
             decision = "BUY";
-            confidence = 95; // High confidence: Not overbought AND upward momentum shift
-        } else if (rsi > 60 && macd.isBearishCross) {
-            decision = "SELL";
-            confidence = 95; // High confidence: Overbought AND downward momentum shift
-        } else if (rsi < 30 && isUptrend) {
+            confidence = 95; // Extreme oversold: Below lower band AND low RSI
+        } else if (macd.isBullishCross && !isBreakingUpper) {
             decision = "BUY";
-            confidence = 80; // Oversold in a macro uptrend
-        } else if (rsi > 70) {
+            confidence = 85; // Upward momentum shift, with room to grow before hitting the upper band
+        } else if (macd.isBearishCross && !isBreakingLower) {
             decision = "SELL";
-            confidence = 80; // Standard overbought
-        } else if (macd.isBullishCross) {
+            confidence = 85;
+        } else if (isBreakingUpper) {
+            decision = "SELL";
+            confidence = 75; // Riding the upper band, likely a pullback soon
+        } else if (isBreakingLower) {
             decision = "BUY";
-            confidence = 70; // MACD momentum is good, but RSI isn't ideal yet
-        } else if (macd.isBearishCross) {
-            decision = "SELL";
-            confidence = 70; 
+            confidence = 75; // Bouncing off the lower band
         } else {
             decision = "HOLD";
-            // Confidence grows the closer RSI gets to perfectly neutral (50)
             confidence = Math.floor(Math.max(50, 100 - Math.abs(rsi - 50) * 2)); 
         }
 
@@ -54,14 +60,16 @@ async function analyzeAsset(ticker, type) {
             decision: decision,
             metrics: {
                 rsi: rsi.toFixed(2),
-                trend: isUptrend ? "Bullish (SMA20 > SMA50)" : "Bearish (SMA20 < SMA50)",
-                macdStatus: macd.isBullishCross ? "Bullish Crossover" : macd.isBearishCross ? "Bearish Crossover" : (macd.histogram > 0 ? "Positive Momentum" : "Negative Momentum")
+                trend: isUptrend ? "Bullish" : "Bearish",
+                macdStatus: macd.isBullishCross ? "Bullish Cross" : macd.isBearishCross ? "Bearish Cross" : "Neutral",
+                bbStatus: isBreakingUpper ? "Upper Breakout!" : isBreakingLower ? "Lower Breakdown!" : "Inside Bands",
+                volatility: bb.bandwidth > 10 ? "High" : "Low/Normal"
             },
             confidence: confidence
         };
     } catch (error) {
         console.error("Analysis Error:", error);
-        return { decision: "ERROR", metrics: { rsi: "N/A", trend: "N/A", macdStatus: "N/A" }, confidence: 0 };
+        return { decision: "ERROR", metrics: { rsi: "N/A", trend: "N/A", macdStatus: "N/A", bbStatus: "N/A" }, confidence: 0 };
     }
 }
 
@@ -195,5 +203,32 @@ function calculateMACD(closes, fast = 12, slow = 26, signalPeriod = 9) {
         isBullishCross: prevMacd <= prevSignal && currentMacd > currentSignal,
         // Bearish cross: MACD crosses BELOW the Signal Line
         isBearishCross: prevMacd >= prevSignal && currentMacd < currentSignal
+    };
+}
+function calculateBollingerBands(closes, period = 20, multiplier = 2) {
+    if (closes.length < period) return null;
+    
+    // Get the most recent 'period' of closing prices
+    const slice = closes.slice(-period);
+    
+    // 1. Calculate the Simple Moving Average (Middle Band)
+    const sma = slice.reduce((a, b) => a + b, 0) / period;
+    
+    // 2. Calculate the Standard Deviation (Volatility)
+    const variance = slice.reduce((sum, price) => sum + Math.pow(price - sma, 2), 0) / period;
+    const stdDev = Math.sqrt(variance);
+    
+    // 3. Calculate Upper and Lower Bands
+    const upperBand = sma + (stdDev * multiplier);
+    const lowerBand = sma - (stdDev * multiplier);
+    
+    // 4. Calculate Bandwidth (Distance between bands as a percentage)
+    const bandwidth = ((upperBand - lowerBand) / sma) * 100;
+    
+    return {
+        upper: upperBand,
+        lower: lowerBand,
+        sma: sma,
+        bandwidth: bandwidth
     };
 }
