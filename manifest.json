@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "TradeAdvisor Pro",
+  "version": "2.0",
+  "description": "Advanced algorithmic trading advice and decision support for Stocks, ETFs, and Crypto.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.binance.com/*",
+    "*://*.robinhood.com/*",
+    "*://*.coinbase.com/*",
+    "*://*.tradingview.com/*",
+    "https://api.coingecko.com/*",
+    "https://www.alphavantage.co/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.binance.com/*", 
+        "*://*.robinhood.com/*", 
+        "*://*.coinbase.com/*",
+        "*://*.tradingview.com/*"
+      ],
+      "js": ["content.js"]
+    }
+  ]
+}
